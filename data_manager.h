@@ -194,7 +194,7 @@ public:
         status = 0;
     }
 
-    bool clearItem(const string &item) {
+    bool clear(const string &item) {
         auto iter = name_list.find(item);
         if (iter == name_list.end()) {
             throw_error("Do not find the tag: " + item);
@@ -250,6 +250,12 @@ public:
             throw_error("data status is not complete or there is too much tag");
             return false;
         }
+        auto iter = name_list.begin();
+        advance(iter, flag);
+        if (iter->second != Int) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
         file.open(file_name, ios::in);
         string s;
         getline(file, s);
@@ -261,12 +267,6 @@ public:
         while (getline(file, s) && !s.empty()) {
             unpack(s, cur);
             if (cur.equal(data, status, name_list)) {
-                auto iter = name_list.begin();
-                advance(iter, flag);
-                if (iter->second != Int) {
-                    throw_error("The ref type is not same as database");
-                    return false;
-                }
                 cnt++;
                 value = average ? value + cur.int_data[flag] : cur.int_data[flag];
             }
@@ -290,6 +290,12 @@ public:
             throw_error("data status is not complete or there is too much tag");
             return false;
         }
+        auto iter = name_list.begin();
+        advance(iter, flag);
+        if (iter->second != Double) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
         file.open(file_name, ios::in);
         string s;
         getline(file, s);
@@ -301,12 +307,6 @@ public:
         while (getline(file, s) && !s.empty()) {
             unpack(s, cur);
             if (cur.equal(data, status, name_list)) {
-                auto iter = name_list.begin();
-                advance(iter, flag);
-                if (iter->second != Double) {
-                    throw_error("The ref type is not same as database");
-                    return false;
-                }
                 cnt++;
                 value = average ? value + cur.double_data[flag] : cur.double_data[flag];
             }
@@ -316,6 +316,7 @@ public:
         return true;
     }
 
+/*
     bool get(string &value) {
         value.clear();
         unsigned tmp = status, cnt = 0, flag = name_list.size() - 1;
@@ -347,6 +348,307 @@ public:
                 }
                 value = cur.string_data[flag];
             }
+        }
+        return true;
+    }
+*/
+
+    bool get_vary(const string &tag, map<string, int> &res, bool average = false) {
+        res.clear();
+
+        auto tagIter = name_list.find(tag);
+        if (tagIter == name_list.end()) {
+            throw_error("Do not find the tag: " + tag);
+            return false;
+        }
+        if (tagIter->second != String) {
+            throw_error("The tag type is not same as database: " + tag);
+            return false;
+        }
+        auto iter = name_list.begin();
+
+        unsigned varyAdv = distance(name_list.begin(), tagIter);
+
+        unsigned tmp = status, cnt = 0, flag = name_list.size() - 1;
+        tmp |= 1u << varyAdv;
+
+        if (status & 1u << varyAdv) {
+            throw_error("there is too much tag");
+            return false;
+        }
+
+        while (tmp) {
+            if (tmp & 1u)
+                cnt++;
+            else
+                flag = cnt;
+            tmp >>= 1u;
+        }
+        if (cnt + 1 != name_list.size()) {
+            throw_error("data status is not complete or there is too much tag");
+            return false;
+        }
+
+        advance(iter, flag);
+        if (iter->second != Int) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
+
+        file.open(file_name, ios::in);
+        string s;
+        getline(file, s);
+        Data cur{};
+        cur.init(name_list.size());
+
+        map<string, int> count;
+
+        while (getline(file, s) && !s.empty()) {
+            unpack(s, cur);
+            if (cur.equal(data, status, name_list)) {
+                auto iter = res.find(cur.string_data[varyAdv]);
+                if (iter == res.end()) {
+                    count.insert({cur.string_data[varyAdv], 1});
+                    res.insert({cur.string_data[varyAdv], cur.int_data[flag]});
+                } else {
+                    if (average) {
+                        count[cur.string_data[varyAdv]]++;
+                        iter->second += cur.int_data[flag];
+                    } else {
+                        iter->second = cur.int_data[flag];
+                    }
+                }
+            }
+        }
+        auto resIter = res.begin();
+        while (resIter != res.end()) {
+            resIter->second /= count[resIter->first];
+            resIter++;
+        }
+        return true;
+    }
+
+    bool get_vary(const string &tag, map<string, double> &res, bool average = false) {
+        res.clear();
+
+        auto tagIter = name_list.find(tag);
+        if (tagIter == name_list.end()) {
+            throw_error("Do not find the tag: " + tag);
+            return false;
+        }
+        if (tagIter->second != String) {
+            throw_error("The tag type is not same as database: " + tag);
+            return false;
+        }
+        auto iter = name_list.begin();
+
+        unsigned varyAdv = distance(name_list.begin(), tagIter);
+
+        unsigned tmp = status, cnt = 0, flag = name_list.size() - 1;
+        tmp |= 1u << varyAdv;
+
+        if (status & 1u << varyAdv) {
+            throw_error("there is too much tag");
+            return false;
+        }
+
+        while (tmp) {
+            if (tmp & 1u)
+                cnt++;
+            else
+                flag = cnt;
+            tmp >>= 1u;
+        }
+        if (cnt + 1 != name_list.size()) {
+            throw_error("data status is not complete or there is too much tag");
+            return false;
+        }
+
+        advance(iter, flag);
+        if (iter->second != Double) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
+
+        file.open(file_name, ios::in);
+        string s;
+        getline(file, s);
+        Data cur{};
+        cur.init(name_list.size());
+
+        map<string, int> count;
+
+        while (getline(file, s) && !s.empty()) {
+            unpack(s, cur);
+            if (cur.equal(data, status, name_list)) {
+                auto iter = res.find(cur.string_data[varyAdv]);
+                if (iter == res.end()) {
+                    count.insert({cur.string_data[varyAdv], 1});
+                    res.insert({cur.string_data[varyAdv], cur.double_data[flag]});
+                } else {
+                    if (average) {
+                        count[cur.string_data[varyAdv]]++;
+                        iter->second += cur.double_data[flag];
+                    } else {
+                        iter->second = cur.double_data[flag];
+                    }
+                }
+            }
+        }
+        auto resIter = res.begin();
+        while (resIter != res.end()) {
+            resIter->second /= count[resIter->first];
+            resIter++;
+        }
+        return true;
+    }
+
+    bool get_vary(const string &tag, map<int, int> &res, bool average = false) {
+        res.clear();
+
+        auto tagIter = name_list.find(tag);
+        if (tagIter == name_list.end()) {
+            throw_error("Do not find the tag: " + tag);
+            return false;
+        }
+        if (tagIter->second != Int) {
+            throw_error("The tag type is not same as database: " + tag);
+            return false;
+        }
+        auto iter = name_list.begin();
+
+        unsigned varyAdv = distance(name_list.begin(), tagIter);
+
+        unsigned tmp = status, cnt = 0, flag = name_list.size() - 1;
+        tmp |= 1u << varyAdv;
+
+        if (status & 1u << varyAdv) {
+            throw_error("there is too much tag");
+            return false;
+        }
+
+        while (tmp) {
+            if (tmp & 1u)
+                cnt++;
+            else
+                flag = cnt;
+            tmp >>= 1u;
+        }
+        if (cnt + 1 != name_list.size()) {
+            throw_error("data status is not complete or there is too much tag");
+            return false;
+        }
+
+        advance(iter, flag);
+        if (iter->second != Int) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
+
+        file.open(file_name, ios::in);
+        string s;
+        getline(file, s);
+        Data cur{};
+        cur.init(name_list.size());
+
+        map<int, int> count;
+
+        while (getline(file, s) && !s.empty()) {
+            unpack(s, cur);
+            if (cur.equal(data, status, name_list)) {
+                auto iter = res.find(cur.int_data[varyAdv]);
+                if (iter == res.end()) {
+                    count.insert({cur.int_data[varyAdv], 1});
+                    res.insert({cur.int_data[varyAdv], cur.int_data[flag]});
+                } else {
+                    if (average) {
+                        count[cur.int_data[varyAdv]]++;
+                        iter->second += cur.int_data[flag];
+                    } else {
+                        iter->second = cur.int_data[flag];
+                    }
+                }
+            }
+        }
+        auto resIter = res.begin();
+        while (resIter != res.end()) {
+            resIter->second /= count[resIter->first];
+            resIter++;
+        }
+        return true;
+    }
+
+    bool get_vary(const string &tag, map<int, double> &res, bool average = false) {
+        res.clear();
+
+        auto tagIter = name_list.find(tag);
+        if (tagIter == name_list.end()) {
+            throw_error("Do not find the tag: " + tag);
+            return false;
+        }
+        if (tagIter->second != Int) {
+            throw_error("The tag type is not same as database: " + tag);
+            return false;
+        }
+        auto iter = name_list.begin();
+
+        unsigned varyAdv = distance(name_list.begin(), tagIter);
+
+        unsigned tmp = status, cnt = 0, flag = name_list.size() - 1;
+        tmp |= 1u << varyAdv;
+
+        if (status & 1u << varyAdv) {
+            throw_error("there is too much tag");
+            return false;
+        }
+
+        while (tmp) {
+            if (tmp & 1u)
+                cnt++;
+            else
+                flag = cnt;
+            tmp >>= 1u;
+        }
+        if (cnt + 1 != name_list.size()) {
+            throw_error("data status is not complete or there is too much tag");
+            return false;
+        }
+
+        advance(iter, flag);
+        if (iter->second != Double) {
+            throw_error("The ref type is not same as database");
+            return false;
+        }
+
+        file.open(file_name, ios::in);
+        string s;
+        getline(file, s);
+        Data cur{};
+        cur.init(name_list.size());
+
+        map<int, int> count;
+
+        while (getline(file, s) && !s.empty()) {
+            unpack(s, cur);
+            if (cur.equal(data, status, name_list)) {
+                auto iter = res.find(cur.int_data[varyAdv]);
+                if (iter == res.end()) {
+                    count.insert({cur.int_data[varyAdv], 1});
+                    res.insert({cur.int_data[varyAdv], cur.double_data[flag]});
+                } else {
+                    if (average) {
+                        count[cur.int_data[varyAdv]]++;
+                        iter->second += cur.double_data[flag];
+                    } else {
+                        iter->second = cur.double_data[flag];
+                    }
+                }
+            }
+        }
+        auto resIter = res.begin();
+        while (resIter != res.end()) {
+            resIter->second /= count[resIter->first];
+            resIter++;
         }
         return true;
     }

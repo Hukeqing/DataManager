@@ -13,11 +13,15 @@ int main() {
     }
     dataManager.setItem("data", "test_data");
     dataManager.setItem("k", 10);
-    dataManager.setItem("b", 3);
+//    dataManager.setItem("b", 4);
+//    dataManager.clear("b");
 //    dataManager.setItem("time", 1.5);
     double temp;
-    if (dataManager.get(temp, true)) {
-        cout << temp << endl;
+    map<int, double> res;
+    if (dataManager.get_vary("b", res, true)) {
+        for (auto &item : res) {
+            cout << item.first << " " << item.second << endl;
+        }
     }
     return 0;
 }
